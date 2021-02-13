@@ -1,0 +1,54 @@
+import csv
+import zipfile
+
+from python_snippets.utils import time_track
+from volatility_calculation import directory_generator, volatility_calculation
+
+result_dict = {}
+
+
+class VolatilityAnalysis:
+
+    def __init__(self, file):
+        self.file = file
+        self.dictionary = {}
+        self.result = {}
+        self.ticket = None
+        self.price = []
+
+    def unzip_file(self):
+        zfile = zipfile.ZipFile(self.file_name, 'r')
+        for filename in zfile.namelist():
+            zfile.extract(filename)
+
+    def run(self):
+        with open(self.file, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                ticket = row['SECID']
+                price = row['PRICE']
+                if ticket not in self.dictionary:
+                    self.dictionary[ticket] = [price]
+                    self.price.append(price)
+                else:
+                    self.dictionary[ticket] += [price]
+                    self.price.append(price)
+            self.ticket = ticket
+        return self.ticket, self.price
+
+
+@time_track
+def main():
+    files_paths = directory_generator(directory_path='trades')
+    files = [VolatilityAnalysis(file=file) for file in files_paths]
+
+    for file in files:
+        file.run()
+
+    for file in files:
+        result_dict[file.ticket] = file.price
+    volatility_calculation(dictionary=result_dict)
+
+
+if __name__ == '__main__':
+    main()
