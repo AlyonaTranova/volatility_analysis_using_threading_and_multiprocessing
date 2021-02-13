@@ -1,0 +1,68 @@
+import csv
+import multiprocessing
+import zipfile
+from queue import Empty
+from python_snippets.utils import time_track
+from volatility_calculation import directory_generator, volatility_calculation
+
+result_dict = {}
+
+
+class VolatilityAnalysis(multiprocessing.Process):
+
+    def __init__(self, file, collector, *args, **kwargs):
+        super(VolatilityAnalysis, self).__init__(*args, **kwargs)
+        self.file = file
+        self.dictionary = {}
+        # self.result = {}
+        self.ticket = None
+        self.price = []
+        self.collector = collector
+
+    def unzip_file(self):
+        zfile = zipfile.ZipFile(self.file_name, 'r')
+        for filename in zfile.namelist():
+            zfile.extract(filename)
+
+    def run(self):
+        print(self.file)
+        with open(self.file, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                ticket = row['SECID']
+                price = row['PRICE']
+                if ticket not in self.dictionary:
+                    self.dictionary[ticket] = [price]
+                    self.price.append(price)
+                else:
+                    self.dictionary[ticket] += [price]
+                    self.price.append(price)
+            self.ticket = ticket
+        self.collector.put(dict(ticket=self.ticket, price=self.price))
+
+
+@time_track
+def main():
+    collector = multiprocessing.Queue()
+    files_paths = directory_generator(directory_path='trades')
+    files = [VolatilityAnalysis(file=file, collector=collector) for file in files_paths]
+
+    for file in files:
+        file.start()
+
+    while True:
+        try:
+            data = collector.get(timeout=1)
+            result_dict[data['ticket']] = data['price']
+        except Empty:
+            if not any(file.is_alive() for file in files):
+                break
+
+    for file in files:
+        file.join()
+
+    volatility_calculation(dictionary=result_dict)
+
+
+if __name__ == '__main__':
+    main()
