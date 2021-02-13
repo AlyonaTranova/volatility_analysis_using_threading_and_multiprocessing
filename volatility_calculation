@@ -1,0 +1,35 @@
+import os
+
+def volatility_calculation(dictionary):
+    result_dictionary = []
+    zero = []
+    for key, value in dictionary.items():
+        maxim = max(value)
+        minim = min(value)
+        half_sum = (round(float(maxim), 2) + round(float(minim), 2)) / 2
+        if round(float(maxim), 2) < round(float(minim), 2):
+            volatility_count = ((round(float(minim), 2) - round(float(maxim), 2)) / round(half_sum, 2)) * 100
+        else:
+            volatility_count = ((round(float(maxim), 2) - round(float(minim), 2)) / round(half_sum, 2)) * 100
+        result_dictionary.append([round(volatility_count, 2), key])
+        if round(volatility_count, 2) <= 0.4:
+            zero.append(key)
+            result_dictionary.remove([round(volatility_count, 2), key])
+    volatility = sorted(result_dictionary)
+    print(f'Максимальная волатильность:\n {volatility[-3][1]} {volatility[-3][0]}%\n '
+          f'{volatility[-2][1]} {volatility[-2][0]}%\n '
+          f'{volatility[-1][1]} {volatility[-1][0]}%')
+    print(f'Минимальная волатильность:\n {volatility[2][1]} {volatility[2][0]}%\n '
+          f'{volatility[1][1]} {volatility[1][0]}%\n '
+          f'{volatility[0][1]} {volatility[0][0]}%')
+    print('Нулевая волатильность:\n', ', '.join(zero))
+
+
+def directory_generator(directory_path):
+    list_of_directories = []
+    for dirpath, dirname, filenames in os.walk(directory_path):
+        for files in filenames:
+            if files.endswith('csv'):
+                file_path = directory_path + '/' + files
+                list_of_directories.append(file_path)
+    return list_of_directories
